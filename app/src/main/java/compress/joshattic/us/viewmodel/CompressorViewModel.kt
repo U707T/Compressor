@@ -151,10 +151,9 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             ?: QualityPreset.CUSTOM
         val videoPickerMode = prefs.getString(PREF_VIDEO_PICKER_MODE, null)
             ?.let { stored -> runCatching { VideoPickerMode.valueOf(stored) }.getOrNull() }
-            // Default to the third-party chooser: on HyperOS the system photo
-            // picker / SAF flow is much harder to use than picking a file manager
-            // (MT Manager, Files, gallery) directly.
-            ?: VideoPickerMode.GALLERY_APP
+            // Default to the in-app browser: on HyperOS the system photo picker
+            // and the SAF flow force the "secure access" dialog for every folder.
+            ?: VideoPickerMode.FILE_BROWSER
         val highConfig = loadQualityPresetConfig("preset_high", QualityPresetConfig(resolutionShortSide = 0, targetFps = 0, sizeRatio = 0.7f, audioBitrate = 320_000))
         val mediumConfig = loadQualityPresetConfig("preset_medium", QualityPresetConfig(resolutionShortSide = 1080, targetFps = 30, sizeRatio = 0.4f, audioBitrate = 192_000))
         val lowConfig = loadQualityPresetConfig("preset_low", QualityPresetConfig(resolutionShortSide = 720, targetFps = 30, sizeRatio = 0.2f, audioBitrate = 128_000))

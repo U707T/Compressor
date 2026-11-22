@@ -281,7 +281,9 @@
     <string name="video_picker_mode_photo_picker">Android 照片选择器</string>
     <string name="video_picker_mode_photo_picker_desc">使用 Android 内置的系统照片选择器</string>
     <string name="video_picker_mode_gallery_app">文件管理器 / 图库</string>
-    <string name="video_picker_mode_gallery_app_desc">用任意能打开视频的应用选择文件，例如 MT 管理器或图库。澎湃 OS 上推荐使用。</string>
+    <string name="video_picker_mode_gallery_app_desc">用任意能打开视频的应用选择文件，例如 MT 管理器或图库。</string>
+    <string name="video_picker_mode_file_browser">内置文件浏览器</string>
+    <string name="video_picker_mode_file_browser_desc">直接浏览文件夹，不经过系统选择器。需要「所有文件访问」权限。澎湃 OS 上推荐使用。</string>
     <string name="select_gallery_app">选择图库应用</string>
 
     <!-- 批量压缩 -->
@@ -321,6 +323,19 @@
     <string name="batch_notification_preparing">准备中…</string>
     <string name="batch_notification_channel">压缩进度</string>
     <string name="batch_notification_channel_desc">批量压缩运行时显示</string>
+
+    <!-- 内置文件浏览器 -->
+    <string name="file_browser_title">选择视频</string>
+    <string name="file_browser_batch_title">选择多个视频</string>
+    <string name="file_browser_permission_title">所有文件访问权限</string>
+    <string name="file_browser_permission_desc">Compressor 可以直接浏览文件夹，不再调用系统选择器。请在下一页授予「所有文件访问权限」，之后随时可以在系统设置里撤销。</string>
+    <string name="file_browser_grant">授予权限</string>
+    <string name="file_browser_empty">此文件夹没有视频</string>
+    <string name="file_browser_selected">已选择 %1$d 个</string>
+    <string name="file_browser_select">压缩 %1$d 个视频</string>
+    <string name="file_browser_up">上一级</string>
+    <string name="file_browser_root">内部存储</string>
+    <string name="file_browser_refresh">显示/隐藏隐藏文件</string>
 
     <!-- 性能 -->
     <string name="performance_title">性能</string>

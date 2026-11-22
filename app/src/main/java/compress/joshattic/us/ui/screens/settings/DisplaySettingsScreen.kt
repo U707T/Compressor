@@ -139,101 +139,38 @@ fun DisplaySettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Option 1: Android Photo Picker
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    onSetVideoPickerMode(VideoPickerMode.PHOTO_PICKER)
-                                    showPickerModeDialog = false
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (state.videoPickerMode == VideoPickerMode.PHOTO_PICKER) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            } else {
-                                MaterialTheme.colorScheme.surface
+                        PickerModeOption(
+                            mode = VideoPickerMode.FILE_BROWSER,
+                            title = stringResource(R.string.video_picker_mode_file_browser),
+                            description = stringResource(R.string.video_picker_mode_file_browser_desc),
+                            selectedMode = state.videoPickerMode,
+                            onSelect = {
+                                onSetVideoPickerMode(it)
+                                showPickerModeDialog = false
                             }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = state.videoPickerMode == VideoPickerMode.PHOTO_PICKER,
-                                    onClick = {
-                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        onSetVideoPickerMode(VideoPickerMode.PHOTO_PICKER)
-                                        showPickerModeDialog = false
-                                    }
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.video_picker_mode_photo_picker),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.video_picker_mode_photo_picker_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        )
 
-                        // Option 2: Gallery apps
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    onSetVideoPickerMode(VideoPickerMode.GALLERY_APP)
-                                    showPickerModeDialog = false
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (state.videoPickerMode == VideoPickerMode.GALLERY_APP) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            } else {
-                                MaterialTheme.colorScheme.surface
+                        PickerModeOption(
+                            mode = VideoPickerMode.PHOTO_PICKER,
+                            title = stringResource(R.string.video_picker_mode_photo_picker),
+                            description = stringResource(R.string.video_picker_mode_photo_picker_desc),
+                            selectedMode = state.videoPickerMode,
+                            onSelect = {
+                                onSetVideoPickerMode(it)
+                                showPickerModeDialog = false
                             }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = state.videoPickerMode == VideoPickerMode.GALLERY_APP,
-                                    onClick = {
-                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        onSetVideoPickerMode(VideoPickerMode.GALLERY_APP)
-                                        showPickerModeDialog = false
-                                    }
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.video_picker_mode_gallery_app),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stringResource(R.string.video_picker_mode_gallery_app_desc),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                        )
+
+                        PickerModeOption(
+                            mode = VideoPickerMode.GALLERY_APP,
+                            title = stringResource(R.string.video_picker_mode_gallery_app),
+                            description = stringResource(R.string.video_picker_mode_gallery_app_desc),
+                            selectedMode = state.videoPickerMode,
+                            onSelect = {
+                                onSetVideoPickerMode(it)
+                                showPickerModeDialog = false
                             }
-                        }
+                        )
                     }
                 },
                 confirmButton = {},
@@ -463,6 +400,7 @@ fun DisplaySettingsScreen(
                                     text = when (state.videoPickerMode) {
                                         VideoPickerMode.PHOTO_PICKER -> stringResource(R.string.video_picker_mode_photo_picker)
                                         VideoPickerMode.GALLERY_APP -> stringResource(R.string.video_picker_mode_gallery_app)
+                                        VideoPickerMode.FILE_BROWSER -> stringResource(R.string.video_picker_mode_file_browser)
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
@@ -473,6 +411,7 @@ fun DisplaySettingsScreen(
                                     text = when (state.videoPickerMode) {
                                         VideoPickerMode.PHOTO_PICKER -> stringResource(R.string.video_picker_mode_photo_picker_desc)
                                         VideoPickerMode.GALLERY_APP -> stringResource(R.string.video_picker_mode_gallery_app_desc)
+                                        VideoPickerMode.FILE_BROWSER -> stringResource(R.string.video_picker_mode_file_browser_desc)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
@@ -1069,4 +1008,57 @@ private fun findClosestSegmentIndex(offset: Offset, rects: Map<Int, Rect>): Int 
         }
     }
     return closest
+}
+
+@Composable
+private fun PickerModeOption(
+    mode: VideoPickerMode,
+    title: String,
+    description: String,
+    selectedMode: VideoPickerMode,
+    onSelect: (VideoPickerMode) -> Unit
+) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val selected = selectedMode == mode
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onSelect(mode)
+            },
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = { onSelect(mode) }
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }

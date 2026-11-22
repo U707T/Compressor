@@ -3,6 +3,32 @@
 All notable changes to this fork of Compressor are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.2] — 2026-11-22
+
+### Added
+
+- **Built-in file browser** (`Settings → Video picker → Built-in file browser`).
+  It walks shared storage directly with `MANAGE_EXTERNAL_STORAGE`, so no system
+  picker, no Storage Access Framework and no HyperOS "secure access" dialog is
+  involved. Folders are browsable (including SD cards), videos show their size,
+  and batch selection works the same way as in the system pickers.
+- The built-in browser is the **default** picker mode. The Android photo picker
+  and the third-party chooser (MT Manager, Files, galleries) are still available
+  in Settings.
+
+### Changed
+
+- `VideoPickerMode` gained `FILE_BROWSER`; the picker dialog now renders its
+  three options through one shared composable instead of three copies.
+
+### Notes
+
+- `MANAGE_EXTERNAL_STORAGE` is an all-files permission: Google Play restricts it
+  to file managers and similar apps, so this fork is intended for sideloading.
+  Revoke it any time in system settings — the other picker modes keep working.
+- Android 7–9 fall back to `READ_EXTERNAL_STORAGE`, Android 10 additionally uses
+  `requestLegacyExternalStorage`.
+
 ## [1.7.1] — 2026-11-22
 
 ### Added

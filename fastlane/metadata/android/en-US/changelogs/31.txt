@@ -1,0 +1,5 @@
+Compressor 1.7.2 focuses on file picking:
+
+- Built-in file browser: browse your folders directly, with no system file picker and no HyperOS "secure access" dialog. Requires the "All files access" permission, which you can revoke at any time.
+- The built-in browser is now the default picker; the Android photo picker and third-party apps (MT Manager, galleries) remain available in Settings.
+- Batch selection works in the built-in browser too, including folders on SD cards.

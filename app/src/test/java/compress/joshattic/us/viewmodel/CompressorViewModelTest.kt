@@ -412,9 +412,8 @@ class CompressorViewModelTest {
 
     @Test
     fun testVideoPickerMode() {
-        // Default is the third-party chooser (file managers / galleries), because
-        // the HyperOS photo picker + SAF flow is harder to use.
-        assertEquals(VideoPickerMode.GALLERY_APP, viewModel.uiState.value.videoPickerMode)
+        // Default is the built-in browser (no system picker / HyperOS secure access).
+        assertEquals(VideoPickerMode.FILE_BROWSER, viewModel.uiState.value.videoPickerMode)
         viewModel.setVideoPickerMode(VideoPickerMode.PHOTO_PICKER)
         assertEquals(VideoPickerMode.PHOTO_PICKER, viewModel.uiState.value.videoPickerMode)
 

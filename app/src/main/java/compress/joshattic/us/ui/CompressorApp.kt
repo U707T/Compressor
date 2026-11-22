@@ -60,6 +60,7 @@ import androidx.core.content.FileProvider
 import compress.joshattic.us.R
 import compress.joshattic.us.model.BatchLimits
 import compress.joshattic.us.ui.screens.BatchScreen
+import compress.joshattic.us.ui.screens.FileBrowserScreen
 import compress.joshattic.us.ui.screens.CompressionFailedScreen
 import compress.joshattic.us.ui.screens.CompressingScreen
 import compress.joshattic.us.ui.screens.ConfigScreen
@@ -79,6 +80,9 @@ enum class SettingsDestination {
     MAIN, ABOUT, DISPLAY, PRESETS, VIDEO, AUDIO, PERFORMANCE, LICENSES
 }
 
+/** Which picker flow the built-in file browser was opened for. */
+private enum class FileBrowserRequest { SINGLE, BATCH }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompressorApp(viewModel: CompressorViewModel) {
@@ -88,6 +92,7 @@ fun CompressorApp(viewModel: CompressorViewModel) {
 
     var forceShowResult by remember { mutableStateOf(false) }
     var currentSettingsDestination by remember { mutableStateOf<SettingsDestination?>(null) }
+    var fileBrowserRequest by remember { mutableStateOf<FileBrowserRequest?>(null) }
     
     // Reset forceShowResult when we leave the result screen
     LaunchedEffect(state.compressedUri) {
@@ -107,7 +112,8 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     }
 
     val isSettingsOpen = currentSettingsDestination != null
-    val canHandleBack = isSettingsOpen || state.selectedUri != null || state.batchItems.isNotEmpty()
+    val canHandleBack = fileBrowserRequest != null || isSettingsOpen ||
+        state.selectedUri != null || state.batchItems.isNotEmpty()
 
     // Predictive back gesture progress (0f..1f) for in-app navigation previews.
     var backGestureProgress by remember { mutableFloatStateOf(0f) }
@@ -120,7 +126,9 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     )
 
     fun performBackNavigation() {
-        if (isSettingsOpen) {
+        if (fileBrowserRequest != null) {
+            fileBrowserRequest = null
+        } else if (isSettingsOpen) {
             if (currentSettingsDestination == SettingsDestination.MAIN) {
                 currentSettingsDestination = null
             } else if (currentSettingsDestination == SettingsDestination.LICENSES) {
@@ -195,6 +203,8 @@ fun CompressorApp(viewModel: CompressorViewModel) {
 
     fun launchBatchPicker() {
         when (state.videoPickerMode) {
+            // Handled by the built-in browser; kept for exhaustiveness.
+            VideoPickerMode.FILE_BROWSER -> Unit
             VideoPickerMode.PHOTO_PICKER -> pickMultipleMedia.launch(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
             )
@@ -311,13 +321,16 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     ) {
         AnimatedContent(
             targetState = when {
+                fileBrowserRequest != null -> "browser"
                 currentSettingsDestination != null -> "settings"
                 state.batchItems.isNotEmpty() -> "batch"
                 state.isCompressing -> "compressing"
                 else -> "main"
             },
             transitionSpec = {
-                if (targetState == "settings" || targetState == "compressing" || targetState == "batch") {
+                if (targetState == "settings" || targetState == "compressing" ||
+                    targetState == "batch" || targetState == "browser"
+                ) {
                     slideInVertically { h -> h } + fadeIn() togetherWith fadeOut()
                 } else {
                     fadeIn() togetherWith slideOutVertically { h -> h }
@@ -326,6 +339,23 @@ fun CompressorApp(viewModel: CompressorViewModel) {
             label = "TopLevelContent"
         ) { destination ->
             when (destination) {
+                "browser" -> {
+                    FileBrowserScreen(
+                        isBatch = fileBrowserRequest == FileBrowserRequest.BATCH,
+                        onPicked = { files ->
+                            val request = fileBrowserRequest
+                            fileBrowserRequest = null
+                            if (files.isNotEmpty()) {
+                                if (request == FileBrowserRequest.BATCH) {
+                                    viewModel.prepareBatch(context, files.map { Uri.fromFile(it) })
+                                } else {
+                                    viewModel.updateSelectedUri(context, Uri.fromFile(files.first()))
+                                }
+                            }
+                        },
+                        onCancel = { fileBrowserRequest = null }
+                    )
+                }
                 "batch" -> {
                     BatchScreen(
                         state = state,
@@ -339,7 +369,13 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                         },
                         onRemoveItem = { viewModel.removeBatchItem(it) },
                         onAddMore = if (!state.batchActive && state.batchSummary == null) {
-                            { launchBatchPicker() }
+                            {
+                                if (state.videoPickerMode == VideoPickerMode.FILE_BROWSER) {
+                                    fileBrowserRequest = FileBrowserRequest.BATCH
+                                } else {
+                                    launchBatchPicker()
+                                }
+                            }
                         } else {
                             null
                         }
@@ -488,9 +524,18 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                                     0 -> EmptyScreen(
                                         totalSaved = state.formattedTotalSaved,
                                         showStorageSaved = state.showStorageSaved,
-                                        onPickBatch = { launchBatchPicker() },
+                                        onPickBatch = {
+                                            if (state.videoPickerMode == VideoPickerMode.FILE_BROWSER) {
+                                                fileBrowserRequest = FileBrowserRequest.BATCH
+                                            } else {
+                                                launchBatchPicker()
+                                            }
+                                        },
                                         onPick = {
                                             when (state.videoPickerMode) {
+                                                VideoPickerMode.FILE_BROWSER -> {
+                                                    fileBrowserRequest = FileBrowserRequest.SINGLE
+                                                }
                                                 VideoPickerMode.PHOTO_PICKER -> {
                                                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
                                                         !hasVideoPermission(context)
