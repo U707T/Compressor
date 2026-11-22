@@ -10,6 +10,7 @@ import compress.joshattic.us.model.DefaultVideoConfig
 import compress.joshattic.us.model.FilenameSegment
 import compress.joshattic.us.model.QualityPreset
 import compress.joshattic.us.model.QualityPresetConfig
+import compress.joshattic.us.model.VideoPickerMode
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -411,15 +412,17 @@ class CompressorViewModelTest {
 
     @Test
     fun testVideoPickerMode() {
-        assertEquals(compress.joshattic.us.model.VideoPickerMode.PHOTO_PICKER, viewModel.uiState.value.videoPickerMode)
-        viewModel.setVideoPickerMode(compress.joshattic.us.model.VideoPickerMode.GALLERY_APP)
-        assertEquals(compress.joshattic.us.model.VideoPickerMode.GALLERY_APP, viewModel.uiState.value.videoPickerMode)
+        // Default is the third-party chooser (file managers / galleries), because
+        // the HyperOS photo picker + SAF flow is harder to use.
+        assertEquals(VideoPickerMode.GALLERY_APP, viewModel.uiState.value.videoPickerMode)
+        viewModel.setVideoPickerMode(VideoPickerMode.PHOTO_PICKER)
+        assertEquals(VideoPickerMode.PHOTO_PICKER, viewModel.uiState.value.videoPickerMode)
 
         val prefs = application.getSharedPreferences("compressor_prefs", android.content.Context.MODE_PRIVATE)
-        assertEquals("GALLERY_APP", prefs.getString("video_picker_mode", null))
+        assertEquals("PHOTO_PICKER", prefs.getString("video_picker_mode", null))
 
         // Create new ViewModel instance to test loading from preferences
         val newViewModel = CompressorViewModel(application)
-        assertEquals(compress.joshattic.us.model.VideoPickerMode.GALLERY_APP, newViewModel.uiState.value.videoPickerMode)
+        assertEquals(VideoPickerMode.PHOTO_PICKER, newViewModel.uiState.value.videoPickerMode)
     }
 }
