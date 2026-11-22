@@ -151,11 +151,10 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             ?: QualityPreset.CUSTOM
         val videoPickerMode = prefs.getString(PREF_VIDEO_PICKER_MODE, null)
             ?.let { stored -> runCatching { VideoPickerMode.valueOf(stored) }.getOrNull() }
-            ?: if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(getApplication())) {
-                VideoPickerMode.PHOTO_PICKER
-            } else {
-                VideoPickerMode.GALLERY_APP
-            }
+            // Default to the third-party chooser: on HyperOS the system photo
+            // picker / SAF flow is much harder to use than picking a file manager
+            // (MT Manager, Files, gallery) directly.
+            ?: VideoPickerMode.GALLERY_APP
         val highConfig = loadQualityPresetConfig("preset_high", QualityPresetConfig(resolutionShortSide = 0, targetFps = 0, sizeRatio = 0.7f, audioBitrate = 320_000))
         val mediumConfig = loadQualityPresetConfig("preset_medium", QualityPresetConfig(resolutionShortSide = 1080, targetFps = 30, sizeRatio = 0.4f, audioBitrate = 192_000))
         val lowConfig = loadQualityPresetConfig("preset_low", QualityPresetConfig(resolutionShortSide = 720, targetFps = 30, sizeRatio = 0.2f, audioBitrate = 128_000))
@@ -418,9 +417,15 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                     cursor.close()
                 }
                 if (size <= 0L) {
-                    context.contentResolver.openFileDescriptor(uri, "r")?.use {
-                        size = it.statSize
+                    try {
+                        context.contentResolver.openFileDescriptor(uri, "r")?.use {
+                            size = it.statSize
+                        }
+                    } catch (_: Exception) {
                     }
+                }
+                if (size <= 0L && uri.scheme == "file") {
+                    size = File(uri.path ?: "").length()
                 }
 
                 val retriever = android.media.MediaMetadataRetriever()
@@ -1511,6 +1516,9 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
     /** Builds the queue from a multi-select picker result (no compression yet). */
     fun prepareBatch(context: Context, uris: List<Uri>) {
         if (uris.isEmpty()) return
+        // A share intent can arrive while a single export is still running; the
+        // encoder must not be shared between the two pipelines.
+        if (_uiState.value.isCompressing) cancelCompression()
         viewModelScope.launch(Dispatchers.IO) {
             val items = uris.distinct()
                 .take(BatchLimits.MAX_ITEMS)
@@ -1528,6 +1536,16 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                     batchIndex = -1,
                     batchSummary = null,
                     batchOverallProgress = 0f,
+                    // The batch screen replaces the single-item flow, so drop any
+                    // stale result from a previous compression.
+                    selectedUri = null,
+                    compressedUri = null,
+                    compressedSize = 0L,
+                    currentOutputSize = 0L,
+                    isCompressing = false,
+                    progress = 0f,
+                    saveSuccess = false,
+                    isSaving = false,
                     error = null,
                     errorLog = null
                 )
@@ -1547,6 +1565,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun startBatchCompression(context: Context) {
+        if (_uiState.value.isCompressing) cancelCompression()
         val state = _uiState.value
         if (state.batchActive || state.batchItems.isEmpty()) return
         if (state.batchItems.all { it.status == BatchItemStatus.DONE }) return

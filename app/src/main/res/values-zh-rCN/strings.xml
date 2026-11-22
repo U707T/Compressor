@@ -280,8 +280,8 @@
     <string name="video_picker_dialog_title">选择视频选择器</string>
     <string name="video_picker_mode_photo_picker">Android 照片选择器</string>
     <string name="video_picker_mode_photo_picker_desc">使用 Android 内置的系统照片选择器</string>
-    <string name="video_picker_mode_gallery_app">图库应用</string>
-    <string name="video_picker_mode_gallery_app_desc">选择使用哪个图库应用来选择视频</string>
+    <string name="video_picker_mode_gallery_app">文件管理器 / 图库</string>
+    <string name="video_picker_mode_gallery_app_desc">用任意能打开视频的应用选择文件，例如 MT 管理器或图库。澎湃 OS 上推荐使用。</string>
     <string name="select_gallery_app">选择图库应用</string>
 
     <!-- 批量压缩 -->

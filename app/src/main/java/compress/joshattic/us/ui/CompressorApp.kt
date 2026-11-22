@@ -205,7 +205,12 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 }
                 try {
-                    batchGalleryPickLauncher.launch(multiIntent)
+                    batchGalleryPickLauncher.launch(
+                        Intent.createChooser(
+                            multiIntent,
+                            context.getString(R.string.select_gallery_app)
+                        )
+                    )
                 } catch (_: Exception) {
                     pickMultipleMedia.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
@@ -496,23 +501,32 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                                                     }
                                                 }
                                                 VideoPickerMode.GALLERY_APP -> {
-                                                    val galleryIntent = Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).apply {
+                                                    // ACTION_GET_CONTENT also lists file managers (MT Manager,
+                                                    // Files, ...), while ACTION_PICK only shows gallery apps.
+                                                    val contentIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
                                                         type = "video/*"
+                                                        addCategory(Intent.CATEGORY_OPENABLE)
                                                     }
-                                                    val chooserIntent = Intent.createChooser(
-                                                        galleryIntent,
-                                                        context.getString(R.string.select_gallery_app)
-                                                    )
                                                     try {
-                                                        galleryPickLauncher.launch(chooserIntent)
+                                                        galleryPickLauncher.launch(
+                                                            Intent.createChooser(
+                                                                contentIntent,
+                                                                context.getString(R.string.select_gallery_app)
+                                                            )
+                                                        )
                                                     } catch (_: Exception) {
+                                                        val galleryIntent = Intent(
+                                                            Intent.ACTION_PICK,
+                                                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                                                        ).apply { type = "video/*" }
                                                         try {
                                                             galleryPickLauncher.launch(galleryIntent)
                                                         } catch (_: Exception) {
-                                                            val fallbackIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                                                type = "video/*"
-                                                            }
-                                                            galleryPickLauncher.launch(fallbackIntent)
+                                                            pickMedia.launch(
+                                                                PickVisualMediaRequest(
+                                                                    ActivityResultContracts.PickVisualMedia.VideoOnly
+                                                                )
+                                                            )
                                                         }
                                                     }
                                                 }

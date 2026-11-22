@@ -74,7 +74,7 @@ data class CompressorUiState(
     val useMbps: Boolean = false,
     val showStorageSaved: Boolean = true,
     val showTargetSizePreset: Boolean = true,
-    val videoPickerMode: VideoPickerMode = VideoPickerMode.PHOTO_PICKER,
+    val videoPickerMode: VideoPickerMode = VideoPickerMode.GALLERY_APP,
     val autoSaveToPhotos: Boolean = false,
     val customOutputTreeUri: String? = null,
     val customOutputFolderName: String? = null,

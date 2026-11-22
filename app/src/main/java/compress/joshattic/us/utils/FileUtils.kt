@@ -250,6 +250,13 @@ fun queryFileSize(context: Context, uri: Uri): Long {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { size = it.statSize }
         } catch (_: Exception) {}
     }
+    if (size <= 0L && uri.scheme == "file") {
+        size = try {
+            File(uri.path ?: "").length()
+        } catch (_: Exception) {
+            0L
+        }
+    }
     return size.coerceAtLeast(0L)
 }
 

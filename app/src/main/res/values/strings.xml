@@ -306,8 +306,8 @@
     <string name="video_picker_dialog_title">Select video picker</string>
     <string name="video_picker_mode_photo_picker">Android Photo Picker</string>
     <string name="video_picker_mode_photo_picker_desc">Use Android\'s built-in system photo picker</string>
-    <string name="video_picker_mode_gallery_app">Gallery apps</string>
-    <string name="video_picker_mode_gallery_app_desc">Pick what gallery app to use to choose videos</string>
+    <string name="video_picker_mode_gallery_app">File managers &amp; galleries</string>
+    <string name="video_picker_mode_gallery_app_desc">Choose videos with any app that can open them, e.g. MT Manager or your gallery. Recommended on HyperOS.</string>
     <string name="select_gallery_app">Select gallery app</string>
 
     <!-- Batch compression -->
