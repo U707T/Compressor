@@ -3,6 +3,25 @@
 All notable changes to this fork of Compressor are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.3] — 2026-11-22
+
+### Fixed
+
+- **"Unexpected runtime error" on variable-frame-rate videos** (social media
+  downloads, screen recordings, 23.976/29.97 fps sources). Media3 1.11.0 added a
+  frame-rate precondition that throws when a decoder reports `frame-rate = 0`;
+  the fix (androidx/media#3399) is in Media3 1.11.1, which is now used.
+- Reported frame rates are normalised (0 / NaN / >240 fps fall back to 30 fps)
+  before they reach the encoder, so VFR metadata can no longer poison the plan.
+
+### Added
+
+- **Compatibility retry.** If an export still fails with
+  `ERROR_CODE_UNEXPECTED` / `ERROR_CODE_FAILED_RUNTIME_CHECK`, Compressor
+  automatically retries once with the simplest configuration: H.264, original
+  frame rate, no scaling, no encoder hints and AAC passthrough. A warning
+  explains what happened.
+
 ## [1.7.2] — 2026-11-22
 
 ### Added

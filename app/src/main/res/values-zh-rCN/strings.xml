@@ -52,6 +52,7 @@
     <string name="fps_60">60fps</string>
     <string name="fps_30">30fps</string>
     <string name="start_compression">开始压缩</string>
+    <string name="warning_safe_mode_retry">该视频为可变帧率或使用了非常规封装，Compressor 已用兼容模式重试（H.264、原始帧率、不做缩放）。</string>
     <string name="warning_hdr_tone_mapped">HDR 视频已转换为 SDR，以避免此设备上的编码器兼容性问题。如需保留 HDR，请使用 AV1。</string>
     <string name="warning_details">警告详情</string>
     <string name="dismiss">关闭</string>

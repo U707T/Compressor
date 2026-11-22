@@ -448,9 +448,9 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                 if (fps <= 0f && videoInfo != null && videoInfo.frameRate > 0f) {
                     fps = videoInfo.frameRate
                 }
-                if (fps <= 0f) {
-                    fps = 30f
-                }
+                // VFR sources (social media downloads, screen recordings) can report 0,
+                // NaN or absurd values. Normalise before it reaches Media3.
+                fps = if (fps.isNaN() || fps < 1f || fps > 240f) 30f else fps
 
                 retriever.release()
             } catch (e: Exception) {
@@ -1833,7 +1833,13 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         forcedOutputMimeType: String? = null,
         additionalWarnings: List<String> = emptyList(),
         allowHevcMuxerFallback: Boolean = true,
-        completion: CompletableDeferred<Boolean>? = null
+        completion: CompletableDeferred<Boolean>? = null,
+        /**
+         * Compatibility retry: no effects, no encoder hints, no frame-rate change and
+         * audio passthrough. Used when the normal pipeline hits a runtime error.
+         */
+        safeMode: Boolean = false,
+        allowSafeModeRetry: Boolean = true
     ): Job = viewModelScope.launch(Dispatchers.Main) {
         val done = completion ?: CompletableDeferred()
         pendingCompletion = done
@@ -1886,18 +1892,27 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
 
         val videoMimeType = forcedOutputMimeType ?: plan.outputVideoMimeType
 
-        val audioPassthrough = probe.hasAudio &&
+        val aacCompatible = probe.hasAudio &&
             probe.audioMime == MimeTypes.AUDIO_AAC &&
             (probe.aacProfile == -1 ||
                 probe.aacProfile == android.media.MediaCodecInfo.CodecProfileLevel.AACObjectLC) &&
-            currentState.audioVolume == 1f &&
+            sourceAudioBitrate > 0
+
+        val audioPassthrough = aacCompatible &&
             !currentState.removeAudio &&
-            sourceAudioBitrate > 0 &&
-            (currentState.audioBitrate == 0 || currentState.audioBitrate == sourceAudioBitrate)
+            if (safeMode) {
+                // Skip the audio pipeline entirely; the volume setting is sacrificed
+                // to get a working export.
+                true
+            } else {
+                currentState.audioVolume == 1f &&
+                    (currentState.audioBitrate == 0 || currentState.audioBitrate == sourceAudioBitrate)
+            }
 
         val shouldIncludeAudio = !currentState.removeAudio && probe.hasAudio
 
-        val tuning = resolveTuning(currentState, plan)
+        // Safe mode deliberately drops every optional hint.
+        val tuning = if (safeMode) EncoderTuning(useForegroundService = true) else resolveTuning(currentState, plan)
 
         val decoderFactory = DefaultDecoderFactory.Builder(context)
             .setEnableDecoderFallback(true)
@@ -1939,7 +1954,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
         }
 
-        val primaryEncoderFactory = buildEncoderFactory(bitrateMode, withHints = true)
+        val primaryEncoderFactory = buildEncoderFactory(bitrateMode, withHints = !safeMode)
         val hintFreeEncoderFactory = buildEncoderFactory(bitrateMode, withHints = false)
         val fallbackEncoderFactory = buildEncoderFactory(
             android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR,
@@ -2030,6 +2045,32 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                         errorLog.contains("csd-0", ignoreCase = true) &&
                         errorLog.contains("hvcC", ignoreCase = true)
 
+                    // ExportException.createForUnexpected() uses ERROR_CODE_FAILED_RUNTIME_CHECK
+                    // (1001) with the message "Unexpected runtime error".
+                    val isUnexpectedRuntimeError =
+                        exportException.errorCode == ExportException.ERROR_CODE_FAILED_RUNTIME_CHECK
+
+                    if (allowSafeModeRetry && isUnexpectedRuntimeError && !done.isCompleted) {
+                        // e.g. Media3 1.11.0's frame-rate check on VFR sources, or an OEM
+                        // pipeline rejecting the current configuration. Retry once with
+                        // the simplest possible export.
+                        activeTransformer = null
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _uiState.update { it.copy(isCompressing = false) }
+                            startCompression(
+                                context = context,
+                                forcedOutputMimeType = MimeTypes.VIDEO_H264,
+                                additionalWarnings = additionalWarnings +
+                                    app.getString(R.string.warning_safe_mode_retry),
+                                allowHevcMuxerFallback = false,
+                                completion = done,
+                                safeMode = true,
+                                allowSafeModeRetry = false
+                            )
+                        }
+                        return
+                    }
+
                     if (allowHevcMuxerFallback && isHevcCsdMuxerFailure && !done.isCompleted) {
                         activeTransformer = null
                         viewModelScope.launch(Dispatchers.Main) {
@@ -2077,7 +2118,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             
         val effectsList = mutableListOf<Effect>()
 
-           if (plan.outputHeight > 0 && plan.outputHeight != currentState.originalHeight) {
+           if (!safeMode && plan.outputHeight > 0 && plan.outputHeight != currentState.originalHeight) {
              val aspectRatio = if (currentState.originalHeight > 0) currentState.originalWidth.toFloat() / currentState.originalHeight else 16f/9f
                 var width = (plan.outputHeight * aspectRatio).toInt()
                 var height = plan.outputHeight
@@ -2099,7 +2140,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         val editedMediaItemBuilder = EditedMediaItem.Builder(mediaItem)
             .setEffects(Effects(audioProcessors, effectsList))
             .setRemoveAudio(!shouldIncludeAudio)
-        if (plan.outputFps > 0) {
+        if (!safeMode && plan.outputFps > 0) {
             editedMediaItemBuilder.setFrameRate(plan.outputFps)
         }
         val editedMediaItem = editedMediaItemBuilder.build()

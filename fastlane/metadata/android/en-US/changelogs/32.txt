@@ -1,0 +1,5 @@
+Compressor 1.7.3 fixes exports failing with "Unexpected runtime error":
+
+- Variable-frame-rate videos (social media downloads, screen recordings, 23.976/29.97 fps) now compress correctly. The crash came from a Media3 1.11.0 regression, fixed in 1.11.1.
+- Reported frame rates are normalised before encoding, so odd VFR metadata can no longer break the export plan.
+- If an export still hits an unexpected runtime error, Compressor retries once in compatibility mode (H.264, original frame rate, no scaling) instead of giving up.
