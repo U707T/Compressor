@@ -165,7 +165,7 @@ fun ResultScreen(
             ) {
                  Icon(Icons.Outlined.Warning, contentDescription = null)
                  Spacer(modifier = Modifier.width(8.dp))
-                 Text("${state.warnings.size} Warning${if (state.warnings.size > 1) "s" else ""} - Tap for Details", fontWeight = FontWeight.Bold)
+                 Text(stringResource(R.string.warnings_tap_details, state.warnings.size), fontWeight = FontWeight.Bold)
             }
             
             if (showWarningDialog) {
@@ -269,7 +269,18 @@ fun ResultScreen(
                 }
             }
         }
-        
+
+        if (state.saveError != null) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.save_error_banner, state.saveError),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         val canShowDelete = (state.saveSuccess || state.hasShared || state.isOriginalDeleted) &&
                 state.selectedUri != null &&
                 hasVideoPermission(context)

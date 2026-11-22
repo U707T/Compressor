@@ -1,0 +1,7 @@
+Compressor 1.8.0 is an audit + polish release:
+
+- Android 16 / HyperOS adaptation: 16 KB pages, edge-to-edge, predictive back and the Android 15+ six-hour foreground-service cap are all handled.
+- A failed save no longer discards the finished video: the result screen keeps it and lets you retry.
+- Files without a readable video track now fail with a clear message instead of a confusing error later.
+- Codec and storage code moved out of the ViewModel, resolution maths de-duplicated, and hard-coded English replaced with translations.
+- README rewritten with permissions, HyperOS setup, build and release instructions.

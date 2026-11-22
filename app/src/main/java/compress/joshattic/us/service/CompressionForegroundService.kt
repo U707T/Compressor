@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import androidx.annotation.RequiresApi
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -56,6 +57,21 @@ class CompressionForegroundService : Service() {
             e.printStackTrace()
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Android 15+ caps `dataSync` foreground services at 6 hours. If a huge queue
+     * ever reaches that limit the system calls this; stop cleanly instead of
+     * letting the platform ANR the process.
+     */
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        stopSelf(startId)
     }
 
     private fun buildNotification(title: String, done: Int, total: Int): Notification {

@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.content.SharedPreferences
-import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -41,6 +40,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import androidx.media3.transformer.VideoEncoderSettings
 import compress.joshattic.us.BuildConfig
+import compress.joshattic.us.codec.CodecCapabilities
 import compress.joshattic.us.R
 import compress.joshattic.us.model.BatchItem
 import compress.joshattic.us.model.BatchItemStatus
@@ -54,6 +54,7 @@ import compress.joshattic.us.model.QualityPreset
 import compress.joshattic.us.model.QualityPresetConfig
 import compress.joshattic.us.model.TargetSizePreset
 import compress.joshattic.us.model.VideoPickerMode
+import compress.joshattic.us.storage.MediaSaver
 import compress.joshattic.us.service.CompressionForegroundService
 import compress.joshattic.us.utils.DeleteMediaResult
 import compress.joshattic.us.utils.DeviceProfile
@@ -114,13 +115,6 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
 
     companion object {
         private const val COPY_BUFFER_BYTES = 1024 * 1024
-        private val cachedCodecInfos: List<android.media.MediaCodecInfo> by lazy {
-            try {
-                MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.toList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
         private const val PREF_EXTRA_SIZE_CUSHION = "extra_size_cushion"
         private const val PREF_CUSTOM_OUTPUT_TREE_URI = "custom_output_tree_uri"
         private const val PREF_CUSTOM_OUTPUT_FOLDER_NAME = "custom_output_folder_name"
@@ -251,58 +245,11 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    internal fun getDeviceEncoders(): List<String> {
-        val codecs = mutableSetOf<String>()
-        try {
-            for (info in cachedCodecInfos) {
-                if (!info.isEncoder) continue
-                for (type in info.supportedTypes) {
-                    if (type.startsWith("video/", ignoreCase = true)) {
-                        codecs.add(type.lowercase())
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        val preferred = listOf(MimeTypes.VIDEO_H264, MimeTypes.VIDEO_H265, MimeTypes.VIDEO_AV1)
-        return codecs.toList().sortedWith { a, b ->
-            val indexA = preferred.indexOf(a)
-            val indexB = preferred.indexOf(b)
-            when {
-                indexA != -1 && indexB != -1 -> indexA.compareTo(indexB)
-                indexA != -1 -> -1
-                indexB != -1 -> 1
-                else -> a.compareTo(b)
-            }
-        }
-    }
+    internal fun getDeviceEncoders(): List<String> = CodecCapabilities.deviceEncoders()
 
-    fun isSoftwareCodec(mimeType: String): Boolean {
-        try {
-            var hasHardware = false
-            var hasSoftware = false
-            for (info in cachedCodecInfos) {
-                if (!info.isEncoder) continue
-                if (info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }) {
-                    val isSW = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        info.isSoftwareOnly
-                    } else {
-                        val name = info.name.lowercase()
-                        name.startsWith("c2.android") || name.startsWith("omx.google")
-                    }
-                    if (isSW) {
-                        hasSoftware = true
-                    } else {
-                        hasHardware = true
-                    }
-                }
-            }
-            return hasSoftware && !hasHardware
-        } catch (e: Exception) {
-            return false
-        }
-    }
+    fun isSoftwareCodec(mimeType: String): Boolean = CodecCapabilities.isSoftwareCodec(mimeType)
+
+    internal fun hasEncoder(mimeType: String): Boolean = CodecCapabilities.hasEncoder(mimeType)
 
     fun enableAllCodecsFeature() {
         prefs.edit {
@@ -318,32 +265,6 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             putBoolean("all_codecs_unlocked", false)
         }
         checkSupportedCodecs()
-    }
-
-    internal fun hasEncoder(mimeType: String): Boolean {
-        try {
-            for (info in cachedCodecInfos) {
-                if (!info.isEncoder) continue
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    if (info.isSoftwareOnly) {
-                        continue
-                    }
-                } else {
-                    val name = info.name.lowercase()
-                    if (name.startsWith("c2.android")) {
-                        continue
-                    }
-                }
-
-                if (info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }) {
-                    return true
-                }
-            }
-        } catch(e: Exception) {
-            e.printStackTrace()
-        }
-        return false
     }
 
     private var compressionJob: Job? = null
@@ -389,6 +310,12 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
 
             try {
                 val probe = probeTracksCached(context, uri)
+                if (probe.video == null) {
+                    _uiState.update {
+                        it.copy(error = getApplication<Application>().getString(R.string.error_video_track_unreadable))
+                    }
+                    return@withContext
+                }
                 audioBitrate = probe.audioBitrate
                 videoMime = probe.video?.mimeType
                 val videoInfo = probe.video
@@ -467,18 +394,13 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                                  else if (current.supportedCodecs.contains(MimeTypes.VIDEO_H265)) MimeTypes.VIDEO_H265
                                  else MimeTypes.VIDEO_H264
 
-            val isVertical = height > width
-            fun getTargetHeight(targetShortSide: Int): Int {
-                if (width <= 0 || height <= 0) return height
-                if (isVertical) {
-                    val targetWidth = minOf(targetShortSide, width)
-                    return (targetWidth.toDouble() * height / width).toInt()
-                } else {
-                    return minOf(targetShortSide, height)
-                }
+            // Reuse the shared portrait-aware conversion instead of a local copy.
+            val probeState = _uiState.value.copy(originalWidth = width, originalHeight = height)
+            val targetHeight = if (videoConfig.defaultTargetResolutionHeight > 0) {
+                probeState.heightForShortSide(videoConfig.defaultTargetResolutionHeight)
+            } else {
+                height
             }
-
-            val targetHeight = if (videoConfig.defaultTargetResolutionHeight > 0) getTargetHeight(videoConfig.defaultTargetResolutionHeight) else height
             val targetFpsVal = if (videoConfig.defaultTargetFps > 0 && fps >= videoConfig.defaultTargetFps) videoConfig.defaultTargetFps else 0
 
             _uiState.update { state ->
@@ -514,6 +436,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                     error = null,
                     errorLog = null,
                     saveSuccess = false,
+                    saveError = null,
                     isSaving = false,
                     isOriginalDeleted = false,
                     isDeletingOriginal = false,
@@ -540,18 +463,6 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         }
         
         val current = _uiState.value
-        val isVertical = current.originalHeight > current.originalWidth
-        
-        fun getTargetHeight(targetShortSide: Int): Int {
-            if (current.originalWidth <= 0 || current.originalHeight <= 0) return current.originalHeight
-            
-            if (isVertical) {
-                val targetWidth = minOf(targetShortSide, current.originalWidth)
-                return (targetWidth.toDouble() * current.originalHeight / current.originalWidth).toInt()
-            } else {
-                return minOf(targetShortSide, current.originalHeight)
-            }
-        }
 
         val config = when(preset) {
             QualityPreset.HIGH -> current.highPresetConfig
@@ -561,7 +472,11 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         if (config != null) {
-            val targetHeight = if (config.resolutionShortSide > 0) getTargetHeight(config.resolutionShortSide) else current.originalHeight
+            val targetHeight = if (config.resolutionShortSide > 0) {
+                current.heightForShortSide(config.resolutionShortSide)
+            } else {
+                current.originalHeight
+            }
             val targetFpsVal = if (config.targetFps > 0 && current.originalFps >= config.targetFps) config.targetFps else 0
             val targetMb = (current.originalSize / (1024.0 * 1024.0) * config.sizeRatio).toFloat().coerceAtLeast(0.1f)
 
@@ -1544,6 +1459,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                     isCompressing = false,
                     progress = 0f,
                     saveSuccess = false,
+                    saveError = null,
                     isSaving = false,
                     error = null,
                     errorLog = null
@@ -1587,13 +1503,15 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         }
         acquireBatchWakeLock(tuning)
         if (tuning.useForegroundService) {
-            CompressionForegroundService.start(context, state.batchItems.size)
+            CompressionForegroundService.start(getApplication(), state.batchItems.size)
         }
         batchJob = viewModelScope.launch { runBatch(context) }
     }
 
     /** Sequential queue runner: one hardware encoder session at a time. */
-    private suspend fun runBatch(context: Context) {
+    private suspend fun runBatch(activityContext: Context) {
+        // Never keep the Activity alive for a multi-hour queue.
+        val context = getApplication<Application>()
         val tuning = resolveTuning()
         val total = _uiState.value.batchItems.size
         var cancelled = false
@@ -1945,8 +1863,8 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                 .build()
         }
 
-        val supportsCbr = isBitrateModeSupported(videoMimeType, android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
-        val isMediaTek = isMediaTekDeviceOrEncoder(videoMimeType)
+        val supportsCbr = CodecCapabilities.isBitrateModeSupported(videoMimeType, android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
+        val isMediaTek = CodecCapabilities.isMediaTekDeviceOrEncoder(videoMimeType)
         val shouldUseCbr = tuning.preferCbr && supportsCbr && !isMediaTek
         val bitrateMode = if (shouldUseCbr) {
             android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR
@@ -2029,6 +1947,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                          ) 
                      }
                      done.complete(true)
+                     if (pendingCompletion === done) pendingCompletion = null
                      // Batch mode saves each item itself, with per-item error handling.
                      if (!_uiState.value.batchActive &&
                          Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -2109,6 +2028,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
                         ) 
                     }
                     done.complete(false)
+                    if (pendingCompletion === done) pendingCompletion = null
                 }
             })
 
@@ -2281,7 +2201,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         if (!sourceMime.isNullOrBlank() && sourceWidth > 0 && sourceHeight > 0 &&
             sourceMime != MimeTypes.VIDEO_DOLBY_VISION
         ) {
-            val decoderSupported = isCodecConfigurationSupported(
+            val decoderSupported = CodecCapabilities.isConfigurationSupported(
                 mimeType = sourceMime,
                 width = sourceWidth,
                 height = sourceHeight,
@@ -2315,7 +2235,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             if (outputWidth % 2 != 0) outputWidth -= 1
             if (outputActualHeight % 2 != 0) outputActualHeight -= 1
             attemptedConfigs.add(Triple(mime, outputActualHeight, safeFps))
-            return isCodecConfigurationSupported(
+            return CodecCapabilities.isConfigurationSupported(
                 mimeType = mime,
                 width = outputWidth,
                 height = outputActualHeight,
@@ -2381,83 +2301,6 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         )
     }
 
-    private fun isCodecConfigurationSupported(
-        mimeType: String,
-        width: Int,
-        height: Int,
-        fps: Float,
-        encoder: Boolean
-    ): Boolean {
-        return try {
-            val safeFps = kotlin.math.ceil(if (fps > 0f) fps.toDouble() else 30.0)
-            cachedCodecInfos
-                .asSequence()
-                .filter { it.isEncoder == encoder }
-                .filter { info -> info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } }
-                .any { info ->
-                    try {
-                        val capabilities = info.getCapabilitiesForType(mimeType)
-                        val videoCaps = capabilities.videoCapabilities ?: return@any false
-                        videoCaps.areSizeAndRateSupported(width, height, safeFps) ||
-                            videoCaps.areSizeAndRateSupported(height, width, safeFps)
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun isMediaTekDeviceOrEncoder(mimeType: String): Boolean {
-        try {
-            val hardware = Build.HARDWARE.lowercase()
-            val board = Build.BOARD.lowercase()
-            val manufacturer = Build.MANUFACTURER.lowercase()
-            val soc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.SOC_MODEL.lowercase() else ""
-
-            if (hardware.contains("mediatek") || board.contains("mediatek") || manufacturer.contains("mediatek") ||
-                soc.contains("mediatek") || soc.contains("dimensity") ||
-                hardware.matches(Regex(""".*mt\d{4}.*""")) || board.matches(Regex(""".*mt\d{4}.*"""))
-            ) {
-                return true
-            }
-
-            for (info in cachedCodecInfos) {
-                if (!info.isEncoder) continue
-                if (info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }) {
-                    val name = info.name.lowercase()
-                    if (name.contains("mtk") || name.contains("mediatek")) {
-                        return true
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return false
-    }
-
-    private fun isBitrateModeSupported(mimeType: String, bitrateMode: Int): Boolean {
-        return try {
-            cachedCodecInfos
-                .asSequence()
-                .filter { it.isEncoder }
-                .filter { info -> info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } }
-                .any { info ->
-                    try {
-                        val capabilities = info.getCapabilitiesForType(mimeType)
-                        val encoderCaps = capabilities.encoderCapabilities ?: return@any false
-                        encoderCaps.isBitrateModeSupported(bitrateMode)
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     private fun isHdr(context: Context, uri: Uri): Boolean {
         val retriever = android.media.MediaMetadataRetriever()
         try {
@@ -2490,115 +2333,12 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
 
         val treeUri = state.customOutputTreeUri
         if (!treeUri.isNullOrBlank()) {
-            val treeError = copyToTree(context, Uri.parse(treeUri), file, name)
+            val treeError = MediaSaver.copyToTree(context, Uri.parse(treeUri), file, name)
             if (treeError == null) return null
             // A broken SAF folder must not lose a finished export: fall back to the gallery.
-            return copyToGallery(context, file, name)
+            return MediaSaver.copyToGallery(context, file, name)
         }
-        return copyToGallery(context, file, name)
-    }
-
-    private suspend fun copyToUri(context: Context, targetUri: Uri, file: File): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                context.contentResolver.openOutputStream(targetUri)?.use { out ->
-                    file.inputStream().use { input -> input.copyTo(out, COPY_BUFFER_BYTES) }
-                } ?: return@withContext "No output stream"
-                null
-            } catch (e: Exception) {
-                e.message ?: e.javaClass.simpleName
-            }
-        }
-
-    private suspend fun copyToTree(
-        context: Context,
-        treeUri: Uri,
-        file: File,
-        targetName: String
-    ): String? = withContext(Dispatchers.IO) {
-        try {
-            val tree = DocumentFile.fromTreeUri(context, treeUri)
-            if (tree == null || !tree.canWrite()) return@withContext "Folder not writable"
-            tree.findFile(targetName)?.takeIf { it.isFile }?.delete()
-            val target = tree.createFile("video/mp4", targetName)
-                ?: return@withContext getApplication<Application>().getString(R.string.error_gallery_entry)
-            context.contentResolver.openOutputStream(target.uri)?.use { out ->
-                file.inputStream().use { input -> input.copyTo(out, COPY_BUFFER_BYTES) }
-            } ?: return@withContext "No output stream"
-            null
-        } catch (e: Exception) {
-            e.message ?: e.javaClass.simpleName
-        }
-    }
-
-    private suspend fun copyToGallery(
-        context: Context,
-        file: File,
-        targetName: String
-    ): String? = withContext(Dispatchers.IO) {
-        // Pre-Q MediaStore inserts need WRITE_EXTERNAL_STORAGE, which this app
-        // deliberately does not request. Use the app-specific Movies folder instead.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return@withContext copyToLegacyMovies(context, file, targetName)
-        }
-
-        var itemUri: Uri? = null
-        try {
-            val values = ContentValues().apply {
-                put(MediaStore.Video.Media.DISPLAY_NAME, targetName)
-                put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                put(MediaStore.Video.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
-                if (!containsKey(MediaStore.Video.Media.DATE_MODIFIED)) {
-                    put(MediaStore.Video.Media.DATE_MODIFIED, System.currentTimeMillis() / 1000)
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Video.Media.IS_PENDING, 1)
-                    put(
-                        MediaStore.Video.Media.RELATIVE_PATH,
-                        Environment.DIRECTORY_MOVIES + "/Compressor"
-                    )
-                }
-            }
-
-            val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            } else {
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            }
-
-            itemUri = context.contentResolver.insert(collection, values)
-                ?: return@withContext getApplication<Application>().getString(R.string.error_gallery_entry)
-
-            context.contentResolver.openOutputStream(itemUri)?.use { out ->
-                file.inputStream().use { input -> input.copyTo(out, COPY_BUFFER_BYTES) }
-            } ?: return@withContext "No output stream"
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val done = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
-                context.contentResolver.update(itemUri, done, null, null)
-            }
-            null
-        } catch (e: Exception) {
-            // Never leave a half-written pending row behind.
-            if (itemUri != null) {
-                runCatching { context.contentResolver.delete(itemUri, null, null) }
-            }
-            e.message ?: e.javaClass.simpleName
-        }
-    }
-
-    private fun copyToLegacyMovies(context: Context, file: File, targetName: String): String? {
-        return try {
-            val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_MOVIES), "Compressor")
-            if (!dir.exists() && !dir.mkdirs()) return "Cannot create ${dir.absolutePath}"
-            val target = File(dir, targetName)
-            file.inputStream().use { input ->
-                target.outputStream().use { out -> input.copyTo(out, COPY_BUFFER_BYTES) }
-            }
-            null
-        } catch (e: Exception) {
-            e.message ?: e.javaClass.simpleName
-        }
+        return MediaSaver.copyToGallery(context, file, name)
     }
 
     private fun runSave(block: suspend (File, String) -> String?) {
@@ -2606,7 +2346,7 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
         if (currentState.isSaving) return
         val compressedUri = currentState.compressedUri ?: return
 
-        _uiState.update { it.copy(isSaving = true) }
+        _uiState.update { it.copy(isSaving = true, saveError = null) }
 
         viewModelScope.launch {
             val path = compressedUri.path
@@ -2616,11 +2356,13 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
             } else {
                 block(file, compressedOutputFileName(currentState))
             }
+            // A failed save must not look like a failed compression: the finished
+            // file is still in the cache and the user can retry or share it.
             _uiState.update {
                 it.copy(
                     isSaving = false,
                     saveSuccess = errorMessage == null,
-                    error = errorMessage?.let { message ->
+                    saveError = errorMessage?.let { message ->
                         getApplication<Application>().getString(R.string.error_save_failed, message)
                     }
                 )
@@ -2629,14 +2371,14 @@ class CompressorViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun saveToUri(context: Context, targetUri: Uri) {
-        runSave { file, _ -> copyToUri(context, targetUri, file) }
+        runSave { file, _ -> MediaSaver.copyToUri(context, targetUri, file) }
     }
 
     private fun saveToCustomTree(context: Context, treeUri: Uri) {
-        runSave { file, name -> copyToTree(context, treeUri, file, name) }
+        runSave { file, name -> MediaSaver.copyToTree(context, treeUri, file, name) }
     }
 
     fun saveToGallery(context: Context) {
-        runSave { file, name -> copyToGallery(context, file, name) }
+        runSave { file, name -> MediaSaver.copyToGallery(context, file, name) }
     }
 }

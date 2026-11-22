@@ -3,6 +3,44 @@
 All notable changes to this fork of Compressor are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] — 2026-11-22
+
+### Added
+
+- **Android 16 / HyperOS adaptation audit** (`docs/AUDIT-1.8.0.md`): 16 KB page
+  size, edge-to-edge, predictive back, foreground-service types and the
+  Android 15+ `dataSync` six-hour cap are all covered.
+- `CompressionForegroundService.onTimeout()` stops the foreground state cleanly
+  when the platform hits the six-hour limit instead of letting it ANR.
+- Full code audit (`docs/AUDIT-1.8.0.md`) with a refreshed triage table.
+
+### Changed
+
+- `CompressorViewModel` split: `codec/CodecCapabilities` (encoder queries,
+  MediaTek detection) and `storage/MediaSaver` (SAF / MediaStore / Uri) are now
+  standalone units; the ViewModel dropped from 2,583 to 2,383 lines.
+- Portrait-aware resolution maths moved to
+  `CompressorUiState.heightForShortSide()` / `shortSideForHeight()` and reused by
+  the preset logic, the selection probe and `autoAdjust()`.
+- The three copies of the "Start compression" button are now one composable.
+- README rewritten: fork differences, permissions, HyperOS setup, build, signing
+  and CI release flow, architecture and known limits.
+
+### Fixed
+
+- **A failed save no longer looks like a failed compression.** Save errors use a
+  dedicated `saveError` channel, the result screen shows "Not saved yet: …" and
+  keeps the finished file available for retry instead of routing to the failure
+  screen whose back button deleted the output.
+- The batch engine now uses the application context, so a multi-hour queue can
+  no longer retain a destroyed Activity.
+- A file without a readable video track fails immediately with a clear message
+  instead of silently compressing with a 10 MB default target.
+- `pendingCompletion` is cleared when an export settles.
+- `shareVideo()` no longer force-unwraps `Uri.path`.
+- Hard-coded English in `InfoDialog`, `ResultScreen` and `PresetsSettingsScreen`
+  replaced with localised strings (en + zh-rCN).
+
 ## [1.7.3] — 2026-11-22
 
 ### Fixed

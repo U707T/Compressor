@@ -74,7 +74,7 @@ fun InfoDialog(
 
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Are you sure?") },
+            title = { Text(stringResource(R.string.are_you_sure)) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text(
@@ -144,12 +144,12 @@ fun InfoDialog(
                         onEnableAllCodecs()
                     }
                 ) {
-                    Text("Enable all codecs")
+                    Text(stringResource(R.string.enable_all_codecs))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -160,7 +160,7 @@ fun InfoDialog(
         title = {
             Column {
                  Text(stringResource(R.string.info_title), style = MaterialTheme.typography.titleLarge)
-                 Text("Compressor v${state.appInfoVersion}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                 Text(stringResource(R.string.version_format, state.appInfoVersion), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         text = {

@@ -32,11 +32,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.WifiOff
@@ -181,7 +181,7 @@ fun WhatsNewDialog(
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     WhatsNewItem(
-                                        icon = Icons.Default.Bolt,
+                                        icon = Icons.Default.Folder,
                                         bgColor = if (isDark) Color(0xFF1E3A5F) else Color(0xFFE3F2FD),
                                         iconTint = if (isDark) Color(0xFF90CAF9) else Color(0xFF1976D2),
                                         title = stringResource(R.string.whats_new_1_title),
@@ -197,7 +197,7 @@ fun WhatsNewDialog(
                                     )
 
                                     WhatsNewItem(
-                                        icon = Icons.Default.Memory,
+                                        icon = Icons.Default.VideoLibrary,
                                         bgColor = if (isDark) Color(0xFF4A2B00) else Color(0xFFFFF3E0),
                                         iconTint = if (isDark) Color(0xFFFFCC80) else Color(0xFFF57C00),
                                         title = stringResource(R.string.whats_new_3_title),

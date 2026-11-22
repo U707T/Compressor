@@ -602,7 +602,7 @@ private fun EditQualityPresetDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("$presetName Preset", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.preset_name_title, presetName), fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
@@ -647,7 +647,7 @@ private fun EditQualityPresetDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Size Ratio Slider
-                Text("Target Size Ratio: ${(ratio * 100).toInt()}%", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.target_size_ratio, (ratio * 100).toInt()), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                 Slider(
                     value = ratio,
                     onValueChange = { ratio = it },

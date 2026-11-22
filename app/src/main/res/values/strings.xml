@@ -67,6 +67,12 @@
     <string name="accept_all">Accept All</string>
     <string name="close">Close</string>
 
+    <string name="warnings_tap_details">%1$d warnings · tap for details</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="preset_name_title">%1$s Preset</string>
+    <string name="target_size_ratio">Target size ratio: %1$d%%</string>
+    <string name="error_video_track_unreadable">Could not read a video track in this file. It may be corrupted, still downloading, or use an unsupported container.</string>
+    <string name="save_error_banner">Not saved yet: %1$s</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="select_video">Select a video to compress</string>
     <string name="add_video_desc">Add Video</string>
@@ -223,7 +229,6 @@
     <string name="placeholder_audio_desc">Audio bitrate and channel default options are coming soon in a future update.</string>
     <string name="placeholder_presets_desc">Preset configuration default options are coming soon in a future update.</string>
 
-    <string name="are_you_sure">Are you sure?</string>
     <string name="enable_all_codecs_warn_dialog">Enabling all codecs may result in poor performance, encoding failures, thermonuclear war, melting batteries and abnormally warm hands</string>
     <string name="warn_battery_life">I HATE good battery life</string>
     <string name="warn_hands_melt">I LOVE when my hands melt</string>
@@ -289,14 +294,15 @@
     <string name="permission_screen_footer">You don\'t have to grant permission if you don\'t want to. If you choose not to, Compressor will continue working like it did before. You can always change this in Settings.</string>
     <string name="grant_permission">Grant permission</string>
     <string name="decline_permission">Decline</string>
-    <string name="whats_new_1_title">Batch Compression</string>
-    <string name="whats_new_1_desc">Queue up to 50 videos and compress them all in one go, with per-video progress and a storage summary at the end.</string>
-    <string name="whats_new_2_title">Performance Mode</string>
-    <string name="whats_new_2_desc">Compressor now detects your SoC, GPU and RAM, and drives the hardware encoder at realtime priority on flagship hardware.</string>
-    <string name="whats_new_3_title">MediaTek &amp; HyperOS Ready</string>
-    <string name="whats_new_3_desc">Dimensity-class tuning: MediaTek-safe bitrate modes, per-chipset encoder hints and a foreground service so HyperOS cannot kill long batches.</string>
-    <string name="whats_new_4_title">Constantly Improving</string>
-    <string name="whats_new_4_desc">This release fixes multiple bugs, hardens the export pipeline and improves compression quality and UX.</string>
+    <string name="whats_new_1_title">Built-in file browser</string>
+    <string name="whats_new_1_desc">Browse folders directly with all-files access — no system picker and no HyperOS “secure access” dialog. Photo picker and third-party apps are still available.</string>
+    <string name="whats_new_2_title">Batch compression</string>
+    <string name="whats_new_2_desc">Queue up to 50 videos, watch per-video progress, and get a total storage summary. Long batches survive screen-off thanks to a foreground service.</string>
+    <string name="whats_new_3_title">Performance mode</string>
+    <string name="whats_new_3_desc">Compressor detects your SoC, GPU and RAM and drives the hardware encoder at realtime priority on flagship hardware — with MediaTek-safe fallbacks.</string>
+    <string name="whats_new_4_title">More stable exports</string>
+    <string name="whats_new_4_desc">Variable-frame-rate videos no longer fail with “Unexpected runtime error”, and a failed save no longer throws away the finished file.</string>
+
     <!-- Extra Size Cushion -->
     <string name="extra_size_cushion_title">Extra size cushion</string>
     <string name="extra_size_cushion_desc">Compresses to an even smaller target size if videos are not compressing to your target size. Enabling this setting reduces quality.</string>

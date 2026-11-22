@@ -47,6 +47,7 @@ data class CompressorUiState(
     val error: String? = null,
     val errorLog: String? = null,
     val saveSuccess: Boolean = false,
+    val saveError: String? = null,
     val isSaving: Boolean = false,
     val isOriginalDeleted: Boolean = false,
     val isDeletingOriginal: Boolean = false,
@@ -126,6 +127,26 @@ data class CompressorUiState(
 
     val batchCurrentItem: BatchItem?
         get() = batchItems.getOrNull(batchCurrentItemIndex)
+    /** Short side -> output height, honouring portrait sources. */
+    fun heightForShortSide(shortSide: Int): Int {
+        if (originalWidth <= 0 || originalHeight <= 0) return originalHeight
+        return if (originalHeight > originalWidth) {
+            ((shortSide.toLong() * originalHeight + originalWidth - 1) / originalWidth).toInt()
+        } else {
+            minOf(shortSide, originalHeight)
+        }
+    }
+
+    /** Output height -> short side, honouring portrait sources. */
+    fun shortSideForHeight(height: Int): Int {
+        if (originalWidth <= 0 || originalHeight <= 0) return height
+        return if (originalHeight > originalWidth) {
+            (height.toLong() * originalWidth / originalHeight).toInt()
+        } else {
+            height
+        }
+    }
+
     val targetSizeWarning: Boolean
         get() {
             val cushionRatio = if (extraSizeCushion) (0.88f / 0.96f) else 1.0f
@@ -266,23 +287,6 @@ data class CompressorUiState(
         var state = this
         val audioLocked = lockAudioBitrate || audioBitrateLocked
         val incomingAudioBitrate = audioBitrate
-        val isVertical = originalHeight > originalWidth
-
-        fun shortSideForHeight(height: Int): Int = if (
-            isVertical && originalWidth > 0 && originalHeight > 0
-        ) {
-            (height.toLong() * originalWidth / originalHeight).toInt()
-        } else {
-            height
-        }
-
-        fun heightForShortSide(shortSide: Int): Int = if (
-            isVertical && originalWidth > 0 && originalHeight > 0
-        ) {
-            ((shortSide.toLong() * originalHeight + originalWidth - 1) / originalWidth).toInt()
-        } else {
-            shortSide
-        }
         var attempts = 0
         val maxAttempts = 20
 

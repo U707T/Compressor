@@ -286,8 +286,9 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     
     fun shareVideo(uri: Uri?) {
         if (uri == null) return
+        val path = uri.path ?: return
         try {
-            val file = File(uri.path!!)
+            val file = File(path)
             val contentUri = FileProvider.getUriForFile(context, context.packageName + ".provider", file)
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "video/mp4"

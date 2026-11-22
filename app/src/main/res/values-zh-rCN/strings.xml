@@ -62,6 +62,12 @@
     <string name="accept_suggestion">接受建议</string>
     <string name="accept_all">全部接受</string>
     <string name="close">关闭</string>
+    <string name="warnings_tap_details">%1$d 条警告 · 点击查看</string>
+    <string name="are_you_sure">确定吗？</string>
+    <string name="preset_name_title">%1$s 预设</string>
+    <string name="target_size_ratio">目标大小比例：%1$d%%</string>
+    <string name="error_video_track_unreadable">无法读取该文件中的视频轨道。文件可能已损坏、尚未下载完成，或使用了不支持的封装。</string>
+    <string name="save_error_banner">尚未保存：%1$s</string>
     <string name="error_prefix">错误：%1$s</string>
     <string name="select_video">选择要压缩的视频</string>
     <string name="add_video_desc">添加视频</string>
@@ -201,7 +207,6 @@
     <string name="placeholder_video_desc">视频压缩和编解码器默认选项将在未来的更新中推出。</string>
     <string name="placeholder_audio_desc">音频码率和声道默认选项将在未来的更新中推出。</string>
     <string name="placeholder_presets_desc">预设配置默认选项将在未来的更新中推出。</string>
-    <string name="are_you_sure">确定要继续吗？</string>
     <string name="enable_all_codecs_warn_dialog">开启所有编解码器可能会导致性能下降、编码失败、电池发热严重等问题。</string>
     <string name="warn_battery_life">我不介意电池续航降低</string>
     <string name="warn_hands_melt">我不介意设备发热</string>
@@ -264,14 +269,15 @@
     <string name="permission_screen_footer">如果您不愿意，无需授予权限。如果您选择不授予，Compressor 将继续像以前一样工作。您可以随时在设置中更改。</string>
     <string name="grant_permission">授予权限</string>
     <string name="decline_permission">拒绝</string>
-    <string name="whats_new_1_title">批量压缩</string>
-    <string name="whats_new_1_desc">一次排队最多 50 个视频，逐个显示进度，结束后给出总计节省空间。</string>
-    <string name="whats_new_2_title">性能模式</string>
-    <string name="whats_new_2_desc">自动识别芯片、GPU 与内存，在旗舰硬件上以实时优先级驱动硬件编码器。</string>
-    <string name="whats_new_3_title">联发科与澎湃 OS 适配</string>
-    <string name="whats_new_3_desc">天玑级调优：联发科安全码率模式、按机型编码器提示，并用前台服务防止澎湃 OS 中断长批量任务。</string>
-    <string name="whats_new_4_title">持续改进</string>
-    <string name="whats_new_4_desc">修复了多处错误，加固了导出流程，进一步提升了压缩质量与使用体验。</string>
+    <string name="whats_new_1_title">内置文件浏览器</string>
+    <string name="whats_new_1_desc">直接浏览文件夹，不再出现系统选择器和澎湃「安全访问」弹窗。照片选择器与第三方应用选择仍然保留。</string>
+    <string name="whats_new_2_title">批量压缩</string>
+    <string name="whats_new_2_desc">一次排队最多 50 个视频，逐条显示进度，结束给出总节省。前台服务让长批量在熄屏后也能继续。</string>
+    <string name="whats_new_3_title">性能模式</string>
+    <string name="whats_new_3_desc">自动识别芯片、GPU 与内存，在旗舰硬件上以实时优先级驱动硬件编码器，并带有联发科安全回退。</string>
+    <string name="whats_new_4_title">更稳的导出</string>
+    <string name="whats_new_4_desc">可变帧率视频不再报「Unexpected runtime error」，保存失败也不会再丢掉已经压好的成品。</string>
+
     <!-- Extra Size Cushion -->
     <string name="extra_size_cushion_title">额外大小缓冲</string>
     <string name="extra_size_cushion_desc">如果视频未压缩到目标大小，则压缩到更小的目标大小。启用此设置会降低画质。</string>

@@ -171,22 +171,13 @@ fun ConfigScreen(
                         if (state.targetSizeWarning) {
                             TargetSizeWarning(state, viewModel)
                         }
-                        val interactionSource = remember { MutableInteractionSource() }
-                        Button(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.startCompression(context)
-                            },
-                            enabled = !isLarger,
-                            interactionSource = interactionSource,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp)
-                                .expressiveScale(interactionSource),
-                            shape = RoundedCornerShape(24.dp)
-                        ) {
-                            Text(stringResource(R.string.start_compression), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
+                        StartCompressionButton(
+                            state = state,
+                            viewModel = viewModel,
+                            context = context,
+                            isLarger = isLarger,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -291,23 +282,13 @@ fun ConfigScreen(
                     if (state.targetSizeWarning) {
                         TargetSizeWarning(state, viewModel)
                     }
-                    val interactionSource = remember { MutableInteractionSource() }
-                    Button(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.startCompression(context)
-                        },
-                        enabled = !isLarger,
-                        interactionSource = interactionSource,
-                        modifier = Modifier
-                            .widthIn(max = 600.dp)
-                            .fillMaxWidth()
-                            .heightIn(min = 56.dp)
-                            .expressiveScale(interactionSource),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Text(stringResource(R.string.start_compression), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
+                    StartCompressionButton(
+                        state = state,
+                        viewModel = viewModel,
+                        context = context,
+                        isLarger = isLarger,
+                        modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
+                    )
                 }
             }
         } else {
@@ -410,26 +391,47 @@ fun ConfigScreen(
                         if (state.targetSizeWarning) {
                             TargetSizeWarning(state, viewModel)
                         }
-                        val interactionSource = remember { MutableInteractionSource() }
-                        Button(
-                            onClick = {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.startCompression(context)
-                            },
-                            enabled = !isLarger,
-                            interactionSource = interactionSource,
-                            modifier = Modifier
-                                .widthIn(max = 600.dp)
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp)
-                                .expressiveScale(interactionSource),
-                            shape = RoundedCornerShape(24.dp)
-                        ) {
-                            Text(stringResource(R.string.start_compression), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
+                        StartCompressionButton(
+                            state = state,
+                            viewModel = viewModel,
+                            context = context,
+                            isLarger = isLarger,
+                            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/** Single source of truth for the "Start compression" button (phone / tablet / large-font). */
+@Composable
+private fun StartCompressionButton(
+    state: CompressorUiState,
+    viewModel: CompressorViewModel,
+    context: Context,
+    isLarger: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    Button(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.startCompression(context)
+        },
+        enabled = !isLarger,
+        interactionSource = interactionSource,
+        modifier = modifier
+            .heightIn(min = 56.dp)
+            .expressiveScale(interactionSource),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Text(
+            stringResource(R.string.start_compression),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
