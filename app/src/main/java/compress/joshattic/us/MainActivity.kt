@@ -21,6 +21,21 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
+
+        // Multiple videos shared at once start a batch instead of a single item.
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris: List<Uri>? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+            }
+            if (!uris.isNullOrEmpty()) {
+                viewModel.prepareBatch(this, uris)
+            }
+            return
+        }
+
         val uri: Uri? = when (intent.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type?.startsWith("video/") == true) {

@@ -1,0 +1,6 @@
+Compressor 1.7.1 adds batch compression and hardware-aware performance tuning:
+
+- Batch Compression: queue up to 50 videos and compress them all at once, with per-video progress and a total storage saving summary
+- Performance Mode: Compressor now detects your SoC, GPU and RAM and drives the hardware encoder at realtime priority on flagship hardware
+- MediaTek & HyperOS Ready: Dimensity-safe bitrate modes, per-chipset encoder hints and a foreground service so long batches survive background restrictions
+- Better error handling when an encoder rejects a configuration, and cleaner gallery saves

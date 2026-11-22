@@ -58,6 +58,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import compress.joshattic.us.R
+import compress.joshattic.us.model.BatchLimits
+import compress.joshattic.us.ui.screens.BatchScreen
 import compress.joshattic.us.ui.screens.CompressionFailedScreen
 import compress.joshattic.us.ui.screens.CompressingScreen
 import compress.joshattic.us.ui.screens.ConfigScreen
@@ -66,6 +68,7 @@ import compress.joshattic.us.ui.screens.ResultScreen
 import compress.joshattic.us.ui.screens.settings.AboutScreen
 import compress.joshattic.us.ui.screens.settings.DisplaySettingsScreen
 import compress.joshattic.us.ui.screens.settings.LicensesScreen
+import compress.joshattic.us.ui.screens.settings.PerformanceScreen
 import compress.joshattic.us.ui.screens.settings.SettingsScreen
 import compress.joshattic.us.utils.ExpressiveSpatialSpring
 import compress.joshattic.us.viewmodel.CompressorViewModel
@@ -73,7 +76,7 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 
 enum class SettingsDestination {
-    MAIN, ABOUT, DISPLAY, PRESETS, VIDEO, AUDIO, LICENSES
+    MAIN, ABOUT, DISPLAY, PRESETS, VIDEO, AUDIO, PERFORMANCE, LICENSES
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +107,7 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     }
 
     val isSettingsOpen = currentSettingsDestination != null
-    val canHandleBack = isSettingsOpen || state.selectedUri != null
+    val canHandleBack = isSettingsOpen || state.selectedUri != null || state.batchItems.isNotEmpty()
 
     // Predictive back gesture progress (0f..1f) for in-app navigation previews.
     var backGestureProgress by remember { mutableFloatStateOf(0f) }
@@ -125,6 +128,10 @@ fun CompressorApp(viewModel: CompressorViewModel) {
             } else {
                 currentSettingsDestination = SettingsDestination.MAIN
             }
+        } else if (state.batchActive) {
+            viewModel.cancelBatch()
+        } else if (state.batchItems.isNotEmpty()) {
+            viewModel.clearBatch()
         } else if (state.isCompressing) {
             viewModel.cancelCompression()
         } else {
@@ -154,6 +161,68 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             viewModel.updateSelectedUri(context, uri)
+        }
+    }
+
+    val pickMultipleMedia = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(BatchLimits.MAX_ITEMS)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            viewModel.prepareBatch(context, uris)
+        }
+    }
+
+    val batchGalleryPickLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uris = mutableListOf<Uri>()
+            result.data?.clipData?.let { clip ->
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i)?.uri?.let { uris.add(it) }
+                }
+            }
+            result.data?.data?.let { uris.add(it) }
+            if (uris.isNotEmpty()) {
+                viewModel.prepareBatch(context, uris)
+            }
+        }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* The foreground service still runs without the notification. */ }
+
+    fun launchBatchPicker() {
+        when (state.videoPickerMode) {
+            VideoPickerMode.PHOTO_PICKER -> pickMultipleMedia.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+            )
+            VideoPickerMode.GALLERY_APP -> {
+                val multiIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "video/*"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                }
+                try {
+                    batchGalleryPickLauncher.launch(multiIntent)
+                } catch (_: Exception) {
+                    pickMultipleMedia.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                    )
+                }
+            }
+        }
+    }
+
+    fun requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -237,12 +306,13 @@ fun CompressorApp(viewModel: CompressorViewModel) {
     ) {
         AnimatedContent(
             targetState = when {
-                state.isCompressing -> "compressing"
                 currentSettingsDestination != null -> "settings"
+                state.batchItems.isNotEmpty() -> "batch"
+                state.isCompressing -> "compressing"
                 else -> "main"
             },
             transitionSpec = {
-                if (targetState == "settings" || targetState == "compressing") {
+                if (targetState == "settings" || targetState == "compressing" || targetState == "batch") {
                     slideInVertically { h -> h } + fadeIn() togetherWith fadeOut()
                 } else {
                     fadeIn() togetherWith slideOutVertically { h -> h }
@@ -251,6 +321,25 @@ fun CompressorApp(viewModel: CompressorViewModel) {
             label = "TopLevelContent"
         ) { destination ->
             when (destination) {
+                "batch" -> {
+                    BatchScreen(
+                        state = state,
+                        onStart = {
+                            requestNotificationPermissionIfNeeded()
+                            viewModel.startBatchCompression(context)
+                        },
+                        onCancel = { viewModel.cancelBatch() },
+                        onDismiss = {
+                            if (state.batchActive) viewModel.cancelBatch() else viewModel.clearBatch()
+                        },
+                        onRemoveItem = { viewModel.removeBatchItem(it) },
+                        onAddMore = if (!state.batchActive && state.batchSummary == null) {
+                            { launchBatchPicker() }
+                        } else {
+                            null
+                        }
+                    )
+                }
                 "compressing" -> {
                     CompressingScreen(state = state, onCancel = { viewModel.cancelCompression() })
                 }
@@ -274,7 +363,8 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                                 onNavigateToDisplay = { currentSettingsDestination = SettingsDestination.DISPLAY },
                                 onNavigateToPresets = { currentSettingsDestination = SettingsDestination.PRESETS },
                                 onNavigateToVideo = { currentSettingsDestination = SettingsDestination.VIDEO },
-                                onNavigateToAudio = { currentSettingsDestination = SettingsDestination.AUDIO }
+                                onNavigateToAudio = { currentSettingsDestination = SettingsDestination.AUDIO },
+                                onNavigateToPerformance = { currentSettingsDestination = SettingsDestination.PERFORMANCE }
                             )
                             SettingsDestination.ABOUT -> AboutScreen(
                                 state = state,
@@ -284,6 +374,11 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                                 isSoftwareCodec = { viewModel.isSoftwareCodec(it) },
                                 onOpenLicenses = { currentSettingsDestination = SettingsDestination.LICENSES },
                                 onShowWhatsNew = { viewModel.showWhatsNewDialog() }
+                            )
+                            SettingsDestination.PERFORMANCE -> PerformanceScreen(
+                                state = state,
+                                onBack = { currentSettingsDestination = SettingsDestination.MAIN },
+                                onSelectMode = { viewModel.setPerformanceMode(it) }
                             )
                             SettingsDestination.LICENSES -> LicensesScreen(
                                 onBack = { currentSettingsDestination = SettingsDestination.ABOUT }
@@ -388,6 +483,7 @@ fun CompressorApp(viewModel: CompressorViewModel) {
                                     0 -> EmptyScreen(
                                         totalSaved = state.formattedTotalSaved,
                                         showStorageSaved = state.showStorageSaved,
+                                        onPickBatch = { launchBatchPicker() },
                                         onPick = {
                                             when (state.videoPickerMode) {
                                                 VideoPickerMode.PHOTO_PICKER -> {

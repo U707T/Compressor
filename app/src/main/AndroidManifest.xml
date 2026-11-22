@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <!-- Batch compression: keep the CPU awake and the process alive on HyperOS. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Allow detecting the photo picker backport on Android 11+ (package visibility). -->
     <queries>
@@ -45,6 +50,13 @@
                 <data android:mimeType="video/*" />
             </intent-filter>
 
+            <!-- Handle multiple shared videos as a batch -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+
             <!-- Handle opened videos -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -63,6 +75,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <service
+            android:name=".service.CompressionForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Ask Google Play services to install the backported photo picker module (Android 4.4-10). -->
         <service

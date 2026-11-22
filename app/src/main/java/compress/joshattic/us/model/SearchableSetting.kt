@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.runtime.Composable
@@ -31,18 +32,23 @@ fun rememberSearchableSettings(
     onNavigateToPresets: () -> Unit,
     onNavigateToVideo: () -> Unit,
     onNavigateToAudio: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    onNavigateToPerformance: () -> Unit = {}
 ): List<SearchableSetting> {
     val displayTitle = stringResource(R.string.general_settings_title)
     val presetsTitle = stringResource(R.string.tab_presets)
     val videoTitle = stringResource(R.string.tab_video)
     val audioTitle = stringResource(R.string.tab_audio)
+    val performanceTitle = stringResource(R.string.performance_title)
     val aboutTitle = stringResource(R.string.about_compressor_title)
 
     val categoryDisplaySubtitle = stringResource(R.string.category_display_subtitle)
     val categoryPresetsSubtitle = stringResource(R.string.category_presets_subtitle)
     val categoryVideoSubtitle = stringResource(R.string.category_video_subtitle)
     val categoryAudioSubtitle = stringResource(R.string.category_audio_subtitle)
+    val categoryPerformanceSubtitle = stringResource(R.string.category_performance_subtitle)
+    val performanceModeTitle = stringResource(R.string.performance_mode)
+    val performanceModeAuto = stringResource(R.string.performance_mode_auto)
     val versionFormat = stringResource(R.string.version_format, state.appInfoVersion)
 
     val autoSavePhotosTitle = stringResource(R.string.auto_save_photos_title)
@@ -223,6 +229,10 @@ fun rememberSearchableSettings(
                 )
             )
         }
+
+        // 5b. Performance
+        settings.add(SearchableSetting(performanceTitle, categoryPerformanceSubtitle, performanceTitle, "performance", Icons.Default.Speed, onNavigateToPerformance))
+        settings.add(SearchableSetting(performanceModeTitle, performanceModeAuto, performanceTitle, "performance", Icons.Default.Speed, onNavigateToPerformance))
 
         // 6. About
         settings.add(SearchableSetting(infoAppName, appName, aboutTitle, "about", Icons.Default.Info, onNavigateToAbout))

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,7 +76,8 @@ fun SettingsScreen(
     onNavigateToDisplay: () -> Unit,
     onNavigateToPresets: () -> Unit,
     onNavigateToVideo: () -> Unit,
-    onNavigateToAudio: () -> Unit
+    onNavigateToAudio: () -> Unit,
+    onNavigateToPerformance: () -> Unit
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -85,6 +87,7 @@ fun SettingsScreen(
     val presetsTitle = stringResource(R.string.tab_presets)
     val videoTitle = stringResource(R.string.tab_video)
     val audioTitle = stringResource(R.string.tab_audio)
+    val performanceTitle = stringResource(R.string.performance_title)
 
     val allSearchableSettings = rememberSearchableSettings(
         state = state,
@@ -92,7 +95,8 @@ fun SettingsScreen(
         onNavigateToPresets = onNavigateToPresets,
         onNavigateToVideo = onNavigateToVideo,
         onNavigateToAudio = onNavigateToAudio,
-        onNavigateToAbout = onNavigateToAbout
+        onNavigateToAbout = onNavigateToAbout,
+        onNavigateToPerformance = onNavigateToPerformance
     )
 
     val searchResults = remember(searchQuery, allSearchableSettings) {
@@ -374,6 +378,14 @@ fun SettingsScreen(
                         categoryId = "audio",
                         icon = Icons.Default.MusicNote,
                         onClick = onNavigateToAudio
+                    ),
+                    SearchableSetting(
+                        title = performanceTitle,
+                        description = stringResource(R.string.category_performance_subtitle),
+                        categoryName = performanceTitle,
+                        categoryId = "performance",
+                        icon = Icons.Default.Speed,
+                        onClick = onNavigateToPerformance
                     )
                 )
 

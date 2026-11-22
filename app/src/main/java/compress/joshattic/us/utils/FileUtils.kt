@@ -230,6 +230,30 @@ fun queryFileName(context: Context, uri: Uri): String? {
 }
 
 /**
+ * Returns the byte size of [uri] using OpenableColumns.SIZE with a file-descriptor
+ * fallback. Returns 0 when the provider does not expose a size.
+ */
+fun queryFileSize(context: Context, uri: Uri): Long {
+    var size = 0L
+    try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (idx != -1 && !cursor.isNull(idx)) {
+                    size = cursor.getLong(idx)
+                }
+            }
+        }
+    } catch (_: Exception) {}
+    if (size <= 0L) {
+        try {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { size = it.statSize }
+        } catch (_: Exception) {}
+    }
+    return size.coerceAtLeast(0L)
+}
+
+/**
  * Attempts to delete a media file using the least invasive permissions possible:
  * 1. SAF document URIs (from OpenDocument) are deleted directly via DocumentsContract.deleteDocument.
  * 2. File URIs are deleted directly via java.io.File.

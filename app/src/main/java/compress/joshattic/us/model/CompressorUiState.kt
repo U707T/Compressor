@@ -3,6 +3,8 @@ package compress.joshattic.us.model
 import android.net.Uri
 import androidx.media3.common.MimeTypes
 import compress.joshattic.us.BuildConfig
+import compress.joshattic.us.utils.DeviceProfile
+import compress.joshattic.us.utils.PerformanceMode
 import compress.joshattic.us.utils.formatFileSize
 import java.util.Locale
 
@@ -95,8 +97,35 @@ data class CompressorUiState(
         FilenameSegment.Text(""),
         FilenameSegment.Token("compressed"),
         FilenameSegment.Text("")
-    )
+    ),
+
+    // Batch compression
+    val batchItems: List<BatchItem> = emptyList(),
+    val batchActive: Boolean = false,
+    val batchIndex: Int = -1,
+    val batchSummary: BatchSummary? = null,
+    val batchOverallProgress: Float = 0f,
+    val batchDestinationLabel: String? = null,
+
+    // Hardware / performance
+    val performanceMode: PerformanceMode = PerformanceMode.AUTO,
+    val deviceProfile: DeviceProfile? = null
 ) {
+    val batchFinishedCount: Int
+        get() = batchItems.count { it.status.isFinished }
+
+    val batchHasPending: Boolean
+        get() = batchItems.any { it.status == BatchItemStatus.PENDING || it.status == BatchItemStatus.FAILED }
+
+    val batchIsRunning: Boolean
+        get() = batchActive && batchItems.any { it.status.isRunning }
+
+    /** Index of the item currently being processed, or -1. */
+    val batchCurrentItemIndex: Int
+        get() = batchItems.indexOfFirst { it.status.isRunning }
+
+    val batchCurrentItem: BatchItem?
+        get() = batchItems.getOrNull(batchCurrentItemIndex)
     val targetSizeWarning: Boolean
         get() {
             val cushionRatio = if (extraSizeCushion) (0.88f / 0.96f) else 1.0f
